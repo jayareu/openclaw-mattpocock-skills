@@ -1,0 +1,43 @@
+{
+  "upstream": {
+    "repo": "https://github.com/mattpocock/skills",
+    "cloneUrl": "https://github.com/mattpocock/skills.git",
+    "branch": "main",
+    "sha": "b8be62ffacb0118fa3eaa29a0923c87c8c11985c",
+    "auditedAt": "2026-05-20T15:43:00Z",
+    "verifiedAt": "2026-05-20T16:38:00Z",
+    "syncedAt": null
+  },
+  "installPolicy": {
+    "codexAppServer": {
+      "defaultCount": 14,
+      "source": ".claude-plugin/plugin.json"
+    },
+    "openclawGlobal": {
+      "defaultSkills": ["grill-me", "handoff", "caveman"],
+      "excludedSkills": ["write-a-skill"]
+    },
+    "misc": "explicit-only",
+    "deprecated": "never-default",
+    "inProgress": "never-default",
+    "personal": "never-default"
+  },
+  "localPatches": [
+    {
+      "path": "scripts/install-mattpocock-skills-openclaw.sh",
+      "summary": "Adds dry-run-first OpenClaw/Codex app-server installer with target-specific skill defaults."
+    },
+    {
+      "path": "scripts/validate-mattpocock-skills-openclaw.sh",
+      "summary": "Adds validation, temp apply, and negative tests for OpenClaw install policy."
+    },
+    {
+      "path": "scripts/security-scan.sh",
+      "summary": "Adds review-oriented security scan for sensitive patterns and risky operations."
+    },
+    {
+      "path": "docs/openclaw-install-policy.md",
+      "summary": "Documents the OpenClaw adaptation install policy and approval gates."
+    }
+  ]
+}
