@@ -49,7 +49,7 @@ const fs = require("fs");
 const path = require("path");
 const plugin = JSON.parse(fs.readFileSync(".claude-plugin/plugin.json", "utf8"));
 if (!Array.isArray(plugin.skills)) throw new Error("plugin.skills is not an array");
-if (plugin.skills.length !== 14) throw new Error(`expected 14 manifest skills, got ${plugin.skills.length}`);
+if (plugin.skills.length !== 17) throw new Error(`expected 17 manifest skills, got ${plugin.skills.length}`);
 const names = plugin.skills.map((rel) => path.basename(rel));
 const unique = new Set(names);
 if (unique.size !== names.length) throw new Error("duplicate manifest skill names");
@@ -57,8 +57,8 @@ for (const rel of plugin.skills) {
   const skillMd = path.join(rel.replace(/^\.\//, ""), "SKILL.md");
   if (!fs.existsSync(skillMd)) throw new Error(`missing ${skillMd}`);
 }
-const globalDefault = ["grill-me", "handoff", "caveman"];
-if (globalDefault.includes("write-a-skill")) throw new Error("write-a-skill must not be global default");
+const globalDefault = ["grill-me", "handoff"];
+if (globalDefault.includes("writing-great-skills")) throw new Error("writing-great-skills must not be global default");
 const misc = fs.readdirSync("skills/misc").filter((name) => fs.existsSync(path.join("skills/misc", name, "SKILL.md")));
 if (misc.length !== 4) throw new Error(`expected 4 misc skills, got ${misc.length}`);
 console.log("PASS: manifest policy");
@@ -66,9 +66,9 @@ NODE
 
 if command -v npx >/dev/null 2>&1; then
   npx --yes skills@latest add . --list >/tmp/openclaw-mattpocock-skills-list.txt
-  if [ "$(sed '/^[[:space:]]*$/d' /tmp/openclaw-mattpocock-skills-list.txt | wc -l)" -lt 14 ]; then
+  if [ "$(sed '/^[[:space:]]*$/d' /tmp/openclaw-mattpocock-skills-list.txt | wc -l)" -lt 17 ]; then
     cat /tmp/openclaw-mattpocock-skills-list.txt >&2
-    fail "skills CLI list returned fewer than 14 lines"
+    fail "skills CLI list returned fewer than 17 lines"
   fi
   pass "skills CLI list"
 else
@@ -76,7 +76,8 @@ else
 fi
 
 CODEX_SKILLS=(
-  diagnose
+  ask-matt
+  diagnosing-bugs
   grill-with-docs
   triage
   improve-codebase-architecture
@@ -84,18 +85,19 @@ CODEX_SKILLS=(
   tdd
   to-issues
   to-prd
-  zoom-out
   prototype
-  caveman
+  domain-modeling
+  codebase-design
   grill-me
+  grilling
   handoff
-  write-a-skill
+  teach
+  writing-great-skills
 )
 
 OPENCLAW_SKILLS=(
   grill-me
   handoff
-  caveman
 )
 
 MISC_SKILLS=(
@@ -130,9 +132,9 @@ assert_dirs_exact "$tmp_misc/agents/main/agent/codex-home/skills" "${CODEX_SKILL
 pass "include misc expands codex set"
 
 tmp_explicit="$(mktemp -d)"
-"$INSTALLER" --profile-path "$tmp_explicit" --target openclaw --skills write-a-skill --apply >/tmp/openclaw-mattpocock-explicit-write-a-skill.txt
-assert_dirs_exact "$tmp_explicit/skills" write-a-skill
-pass "explicit write-a-skill allowed only when named"
+"$INSTALLER" --profile-path "$tmp_explicit" --target openclaw --skills writing-great-skills --apply >/tmp/openclaw-mattpocock-explicit-writing-great-skills.txt
+assert_dirs_exact "$tmp_explicit/skills" writing-great-skills
+pass "explicit writing-great-skills allowed only when named"
 
 assert_fails "existing target without --replace" "$INSTALLER" --profile-path "$tmp_openclaw" --target openclaw --apply
 assert_fails "unknown skill" "$INSTALLER" --profile-path "$(mktemp -d)" --target codex --skills not-a-skill --apply

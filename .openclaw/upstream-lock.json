@@ -3,19 +3,20 @@
     "repo": "https://github.com/mattpocock/skills",
     "cloneUrl": "https://github.com/mattpocock/skills.git",
     "branch": "main",
-    "sha": "b8be62ffacb0118fa3eaa29a0923c87c8c11985c",
-    "auditedAt": "2026-05-20T15:43:00Z",
-    "verifiedAt": "2026-05-20T16:38:00Z",
-    "syncedAt": null
+    "releaseTag": "v1.0.1",
+    "sha": "2454c95dc305c158b21a0cdafeb728879dd0359a",
+    "auditedAt": "2026-06-20T22:40:00Z",
+    "verifiedAt": "2026-06-20T22:40:00Z",
+    "syncedAt": "2026-06-20T22:40:00Z"
   },
   "installPolicy": {
     "codexAppServer": {
-      "defaultCount": 14,
+      "defaultCount": 17,
       "source": ".claude-plugin/plugin.json"
     },
     "openclawGlobal": {
-      "defaultSkills": ["grill-me", "handoff", "caveman"],
-      "excludedSkills": ["write-a-skill"]
+      "defaultSkills": ["grill-me", "handoff"],
+      "excludedSkills": ["teach", "writing-great-skills"]
     },
     "misc": "explicit-only",
     "deprecated": "never-default",
