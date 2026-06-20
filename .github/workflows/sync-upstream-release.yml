@@ -1,0 +1,95 @@
+name: Sync Upstream Release
+
+on:
+  schedule:
+    - cron: "17 8 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-upstream-release
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Watch mattpocock/skills releases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync latest upstream release
+        id: sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/sync-upstream-release.sh --latest --apply --env-file "$GITHUB_OUTPUT"
+
+      - name: Validate adapter
+        if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
+        run: |
+          npm test
+          scripts/validate-mattpocock-skills-openclaw.sh
+          scripts/security-scan.sh
+          git diff --check
+
+      - name: Push sync branch
+        if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
+        env:
+          TAG: ${{ steps.sync.outputs.UPSTREAM_SYNC_TAG }}
+        run: |
+          branch="sync-upstream-${TAG}"
+          git branch -M "$branch"
+          git push --force-with-lease origin "HEAD:$branch"
+          echo "SYNC_BRANCH=$branch" >> "$GITHUB_ENV"
+
+      - name: Open or update pull request
+        if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.sync.outputs.UPSTREAM_SYNC_TAG }}
+          SHA: ${{ steps.sync.outputs.UPSTREAM_SYNC_SHA }}
+        run: |
+          title="Sync mattpocock/skills ${TAG}"
+          body="$(cat <<EOF
+          ## Summary
+
+          Sync upstream mattpocock/skills release ${TAG}.
+
+          ## Verification
+
+          - npm test
+          - scripts/validate-mattpocock-skills-openclaw.sh
+          - scripts/security-scan.sh
+          - git diff --check
+
+          Upstream commit: ${SHA}
+          EOF
+          )"
+          if gh pr view "$SYNC_BRANCH" --json number >/dev/null 2>&1; then
+            gh pr edit "$SYNC_BRANCH" --title "$title" --body "$body"
+          else
+            gh pr create --base main --head "$SYNC_BRANCH" --title "$title" --body "$body"
+          fi
+
+      - name: Report no update
+        if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'false'
+        run: echo "Already synced to ${{ steps.sync.outputs.UPSTREAM_SYNC_TAG }}."

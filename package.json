@@ -10,6 +10,7 @@
   "license": "MIT",
   "scripts": {
     "changeset": "changeset",
+    "test": "node tests/sync-upstream-release.test.mjs",
     "version": "changeset version"
   },
   "devDependencies": {
