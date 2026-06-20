@@ -193,7 +193,7 @@ default_names_for_target() {
       fi
       ;;
     openclaw)
-      printf '%s\n' grill-me handoff caveman
+      printf '%s\n' grill-me handoff
       if [ "$INCLUDE_MISC" -eq 1 ]; then
         misc_names
       fi
