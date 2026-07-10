@@ -122,8 +122,9 @@ if [ "$APPLY" -eq 1 ] && [ -n "$(git status --porcelain)" ]; then
   die "working tree is dirty; commit or stash changes before syncing"
 fi
 
-git fetch --tags "$UPSTREAM_REPO" "+refs/tags/$TAG:refs/tags/$TAG" >/dev/null
-target_sha="$(git rev-parse "$TAG^{commit}")"
+FETCH_REF="refs/upstream-sync/$TAG"
+git fetch --no-tags "$UPSTREAM_REPO" "+refs/tags/$TAG:$FETCH_REF" >/dev/null
+target_sha="$(git rev-parse "$FETCH_REF^{commit}")"
 
 write_env() {
   if [ -n "$ENV_FILE" ]; then
@@ -152,7 +153,7 @@ if [ "$APPLY" -eq 0 ]; then
   exit 0
 fi
 
-git merge --no-edit "$TAG"
+git merge --no-edit "$FETCH_REF"
 
 timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 node - "$LOCK_FILE" "$TAG" "$target_sha" "$timestamp" <<'NODE'

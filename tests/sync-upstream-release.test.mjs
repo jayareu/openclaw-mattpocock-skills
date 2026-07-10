@@ -14,6 +14,15 @@ function git(args, cwd) {
   return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
 }
 
+function hasGitRef(ref, cwd) {
+  try {
+    git(["rev-parse", "--verify", "--quiet", ref], cwd);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function run(args, cwd) {
   return execFileSync(script, args, { cwd, encoding: "utf8" });
 }
@@ -36,10 +45,17 @@ async function makeFixture() {
   git(["commit", "-q", "-m", "release v1.0.1"], upstream);
   git(["tag", "v1.0.1"], upstream);
   const releaseSha = git(["rev-parse", "v1.0.1^{commit}"], upstream);
+  writeFileSync(join(upstream, "README.md"), "v3\n");
+  git(["add", "README.md"], upstream);
+  git(["commit", "-q", "-m", "release v1.1.0"], upstream);
+  git(["tag", "v1.1.0"], upstream);
+  const nextReleaseSha = git(["rev-parse", "v1.1.0^{commit}"], upstream);
 
   git(["clone", "-q", upstream, downstream], root);
   git(["config", "user.name", "Test"], downstream);
   git(["config", "user.email", "test@example.invalid"], downstream);
+  git(["tag", "-d", "v1.0.1"], downstream);
+  git(["tag", "-d", "v1.1.0"], downstream);
   git(["checkout", "-q", "v1.0.0"], downstream);
   git(["switch", "-q", "-c", "main"], downstream);
   await mkdir(join(downstream, ".openclaw"), { recursive: true });
@@ -65,7 +81,7 @@ async function makeFixture() {
   git(["add", ".openclaw/upstream-lock.json"], downstream);
   git(["commit", "-q", "-m", "add lock"], downstream);
 
-  return { root, upstream, downstream, releaseSha };
+  return { root, upstream, downstream, releaseSha, nextReleaseSha };
 }
 
 test("syncs a requested release tag and updates the upstream lock", async () => {
@@ -84,6 +100,28 @@ test("syncs a requested release tag and updates the upstream lock", async () => 
     assert.equal(lock.upstream.sha, fixture.releaseSha);
     assert.equal(readFileSync(join(fixture.downstream, "README.md"), "utf8"), "v2\n");
     assert.match(readFileSync(envFile, "utf8"), /UPSTREAM_SYNC_CHANGED=true/);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("does not clobber unrelated local tags while fetching a requested release tag", async () => {
+  const fixture = await makeFixture();
+  try {
+    git(["tag", "-f", "v1.0.1", "HEAD"], fixture.downstream);
+    const localTagSha = git(["rev-parse", "v1.0.1^{commit}"], fixture.downstream);
+
+    run([
+      "--tag", "v1.1.0",
+      "--upstream-repo", fixture.upstream,
+      "--apply"
+    ], fixture.downstream);
+
+    const lock = JSON.parse(readFileSync(join(fixture.downstream, ".openclaw", "upstream-lock.json"), "utf8"));
+    assert.equal(lock.upstream.releaseTag, "v1.1.0");
+    assert.equal(lock.upstream.sha, fixture.nextReleaseSha);
+    assert.equal(git(["rev-parse", "v1.0.1^{commit}"], fixture.downstream), localTagSha);
+    assert.equal(hasGitRef("refs/tags/v1.1.0", fixture.downstream), false);
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
   }

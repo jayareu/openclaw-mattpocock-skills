@@ -1,0 +1,32 @@
+name: Check Upstream Staleness
+
+on:
+  schedule:
+    - cron: "47 9 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: check-upstream-staleness
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Compare upstream release with lock
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check upstream lock
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/check-upstream-staleness.sh
