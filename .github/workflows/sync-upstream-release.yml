@@ -43,14 +43,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: scripts/sync-upstream-release.sh --latest --apply --env-file "$GITHUB_OUTPUT"
 
-      - name: Validate adapter
-        if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
-        run: |
-          npm test
-          scripts/validate-mattpocock-skills-openclaw.sh
-          scripts/security-scan.sh
-          git diff --check
-
       - name: Push sync branch
         if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
         env:
@@ -76,6 +68,9 @@ jobs:
 
           ## Verification
 
+          This workflow opens or updates the sync PR before validation so
+          upstream drift stays visible even when validation finds follow-up work.
+
           - npm test
           - scripts/validate-mattpocock-skills-openclaw.sh
           - scripts/security-scan.sh
@@ -89,6 +84,14 @@ jobs:
           else
             gh pr create --base main --head "$SYNC_BRANCH" --title "$title" --body "$body"
           fi
+
+      - name: Validate adapter
+        if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
+        run: |
+          npm test
+          scripts/validate-mattpocock-skills-openclaw.sh
+          scripts/security-scan.sh
+          git diff --check
 
       - name: Report no update
         if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'false'
