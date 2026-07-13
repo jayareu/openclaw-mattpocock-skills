@@ -20,7 +20,7 @@ ACP Codex is explicit only and is not included in `--target all`.
 
 ## Default Skill Sets
 
-Codex app-server receives all 17 skills from `.claude-plugin/plugin.json`:
+Codex app-server receives all 21 skills from `.claude-plugin/plugin.json`:
 
 - `ask-matt`
 - `diagnosing-bugs`
@@ -29,11 +29,15 @@ Codex app-server receives all 17 skills from `.claude-plugin/plugin.json`:
 - `improve-codebase-architecture`
 - `setup-matt-pocock-skills`
 - `tdd`
-- `to-issues`
-- `to-prd`
+- `to-spec`
+- `to-tickets`
+- `wayfinder`
+- `implement`
 - `prototype`
+- `research`
 - `domain-modeling`
 - `codebase-design`
+- `code-review`
 - `grill-me`
 - `grilling`
 - `handoff`
@@ -46,6 +50,8 @@ OpenClaw-global receives only:
 - `handoff`
 
 `teach` and `writing-great-skills` are intentionally not installed globally by default. Use native OpenClaw skills for global OpenClaw skill maintenance and Codex app-server skills for Codex-local skill work.
+
+When a release retires or renames a managed skill, live promotion archives the old managed directory before installing the current manifest. For v1.1.0, `to-issues` and `to-prd` are replaced by `to-spec` and `to-tickets`.
 
 ## Explicit-Only Skills
 
