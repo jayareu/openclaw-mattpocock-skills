@@ -48,8 +48,13 @@ node <<'NODE'
 const fs = require("fs");
 const path = require("path");
 const plugin = JSON.parse(fs.readFileSync(".claude-plugin/plugin.json", "utf8"));
+const lock = JSON.parse(fs.readFileSync(".openclaw/upstream-lock.json", "utf8"));
 if (!Array.isArray(plugin.skills)) throw new Error("plugin.skills is not an array");
-if (plugin.skills.length !== 17) throw new Error(`expected 17 manifest skills, got ${plugin.skills.length}`);
+const expectedCount = lock.installPolicy?.codexAppServer?.defaultCount;
+if (!Number.isInteger(expectedCount)) throw new Error("missing integer installPolicy.codexAppServer.defaultCount");
+if (plugin.skills.length !== expectedCount) {
+  throw new Error(`expected ${expectedCount} manifest skills, got ${plugin.skills.length}`);
+}
 const names = plugin.skills.map((rel) => path.basename(rel));
 const unique = new Set(names);
 if (unique.size !== names.length) throw new Error("duplicate manifest skill names");
@@ -64,36 +69,24 @@ if (misc.length !== 4) throw new Error(`expected 4 misc skills, got ${misc.lengt
 console.log("PASS: manifest policy");
 NODE
 
+MANIFEST_COUNT="$(node -p 'require("./.claude-plugin/plugin.json").skills.length')"
+
 if command -v npx >/dev/null 2>&1; then
   npx --yes skills@latest add . --list >/tmp/openclaw-mattpocock-skills-list.txt
-  if [ "$(sed '/^[[:space:]]*$/d' /tmp/openclaw-mattpocock-skills-list.txt | wc -l)" -lt 17 ]; then
+  if [ "$(sed '/^[[:space:]]*$/d' /tmp/openclaw-mattpocock-skills-list.txt | wc -l)" -lt "$MANIFEST_COUNT" ]; then
     cat /tmp/openclaw-mattpocock-skills-list.txt >&2
-    fail "skills CLI list returned fewer than 17 lines"
+    fail "skills CLI list returned fewer than $MANIFEST_COUNT lines"
   fi
   pass "skills CLI list"
 else
   echo "WARN: npx not found; skipping skills CLI list"
 fi
 
-CODEX_SKILLS=(
-  ask-matt
-  diagnosing-bugs
-  grill-with-docs
-  triage
-  improve-codebase-architecture
-  setup-matt-pocock-skills
-  tdd
-  to-issues
-  to-prd
-  prototype
-  domain-modeling
-  codebase-design
-  grill-me
-  grilling
-  handoff
-  teach
-  writing-great-skills
-)
+mapfile -t CODEX_SKILLS < <(node -e '
+const path = require("path");
+const plugin = require("./.claude-plugin/plugin.json");
+for (const rel of plugin.skills) console.log(path.basename(rel));
+')
 
 OPENCLAW_SKILLS=(
   grill-me
