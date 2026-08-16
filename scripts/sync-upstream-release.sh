@@ -32,6 +32,7 @@ repo_root() {
   cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd
 }
 
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="${OPENCLAW_MATTPOCOCK_REPO:-$(git rev-parse --show-toplevel 2>/dev/null || repo_root)}"
 LOCK_FILE="$REPO/.openclaw/upstream-lock.json"
 UPSTREAM_REPO=""
@@ -153,7 +154,15 @@ if [ "$APPLY" -eq 0 ]; then
   exit 0
 fi
 
-git merge --no-edit "$FETCH_REF"
+if ! git merge --no-edit "$FETCH_REF"; then
+  mapfile -t unmerged_paths < <(git diff --name-only --diff-filter=U)
+  if [ "${#unmerged_paths[@]}" -ne 1 ] || [ "${unmerged_paths[0]:-}" != "package.json" ]; then
+    die "upstream merge has unsupported conflicts: ${unmerged_paths[*]:-unknown}"
+  fi
+  node "$SCRIPT_ROOT/resolve-package-json-conflict.mjs" package.json
+  git add package.json
+  git commit --no-edit >/dev/null
+fi
 
 timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 node - "$LOCK_FILE" "$TAG" "$target_sha" "$timestamp" <<'NODE'
