@@ -9,7 +9,8 @@ const workflowDir = join(repoRoot, ".github", "workflows");
 const workflowNames = [
   "check-upstream-staleness.yml",
   "release.yml",
-  "sync-upstream-release.yml"
+  "sync-upstream-release.yml",
+  "validate.yml"
 ];
 
 function workflow(name) {
@@ -27,6 +28,16 @@ test("validates an upstream candidate before pushing or opening a PR", () => {
   assert.notEqual(prIndex, -1);
   assert.ok(validateIndex < pushIndex, "validation must precede branch push");
   assert.ok(validateIndex < prIndex, "validation must precede PR mutation");
+});
+
+test("validates pull requests and main pushes", () => {
+  const text = workflow("validate.yml");
+  assert.match(text, /pull_request:/);
+  assert.match(text, /push:/);
+  assert.match(text, /npm test/);
+  assert.match(text, /validate-mattpocock-skills-openclaw\.sh/);
+  assert.match(text, /security-scan\.sh/);
+  assert.match(text, /git diff --check/);
 });
 
 test("pins every referenced GitHub Action to an immutable commit", () => {
