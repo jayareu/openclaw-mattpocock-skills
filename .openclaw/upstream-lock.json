@@ -3,15 +3,15 @@
     "repo": "https://github.com/mattpocock/skills",
     "cloneUrl": "https://github.com/mattpocock/skills.git",
     "branch": "main",
-    "releaseTag": "v1.1.0",
-    "sha": "d574778f94cf620fcc8ce741584093bc650a61d3",
-    "auditedAt": "2026-07-13T09:28:17Z",
-    "verifiedAt": "2026-07-13T09:28:17Z",
-    "syncedAt": "2026-07-13T09:28:17Z"
+    "releaseTag": "v1.2.3",
+    "sha": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+    "auditedAt": "2026-08-16T16:25:42Z",
+    "verifiedAt": "2026-08-16T16:25:42Z",
+    "syncedAt": "2026-08-16T16:25:42Z"
   },
   "installPolicy": {
     "codexAppServer": {
-      "defaultCount": 21,
+      "defaultCount": 25,
       "source": ".claude-plugin/plugin.json"
     },
     "openclawGlobal": {

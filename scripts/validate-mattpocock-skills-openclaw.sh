@@ -124,14 +124,10 @@ tmp_misc="$(mktemp -d)"
 assert_dirs_exact "$tmp_misc/agents/main/agent/codex-home/skills" "${CODEX_SKILLS[@]}" "${MISC_SKILLS[@]}"
 pass "include misc expands codex set"
 
-tmp_explicit="$(mktemp -d)"
-"$INSTALLER" --profile-path "$tmp_explicit" --target openclaw --skills writing-great-skills --apply >/tmp/openclaw-mattpocock-explicit-writing-great-skills.txt
-assert_dirs_exact "$tmp_explicit/skills" writing-great-skills
-pass "explicit writing-great-skills allowed only when named"
-
 assert_fails "existing target without --replace" "$INSTALLER" --profile-path "$tmp_openclaw" --target openclaw --apply
 assert_fails "unknown skill" "$INSTALLER" --profile-path "$(mktemp -d)" --target codex --skills not-a-skill --apply
 assert_fails "deprecated skill excluded" "$INSTALLER" --profile-path "$(mktemp -d)" --target codex --skills qa --apply
+assert_fails "retired writing-great-skills excluded" "$INSTALLER" --profile-path "$(mktemp -d)" --target openclaw --skills writing-great-skills --apply
 
 tmp_replace="$(mktemp -d)"
 "$INSTALLER" --profile-path "$tmp_replace" --target openclaw --apply >/tmp/openclaw-mattpocock-replace-first.txt
