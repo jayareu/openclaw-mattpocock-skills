@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
@@ -29,7 +29,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -42,6 +42,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: scripts/sync-upstream-release.sh --latest --apply --env-file "$GITHUB_OUTPUT"
+
+      - name: Validate adapter
+        if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
+        run: |
+          npm test
+          scripts/validate-mattpocock-skills-openclaw.sh
+          scripts/security-scan.sh
+          git diff --check
 
       - name: Push sync branch
         if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
@@ -84,14 +92,6 @@ jobs:
           else
             gh pr create --base main --head "$SYNC_BRANCH" --title "$title" --body "$body"
           fi
-
-      - name: Validate adapter
-        if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
-        run: |
-          npm test
-          scripts/validate-mattpocock-skills-openclaw.sh
-          scripts/security-scan.sh
-          git diff --check
 
       - name: Report no update
         if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'false'
