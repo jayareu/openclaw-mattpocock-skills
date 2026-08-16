@@ -20,7 +20,7 @@ ACP Codex is explicit only and is not included in `--target all`.
 
 ## Default Skill Sets
 
-Codex app-server receives all 21 skills from `.claude-plugin/plugin.json`:
+Codex app-server receives all 25 skills from `.claude-plugin/plugin.json`:
 
 - `ask-matt`
 - `diagnosing-bugs`
@@ -38,20 +38,24 @@ Codex app-server receives all 21 skills from `.claude-plugin/plugin.json`:
 - `domain-modeling`
 - `codebase-design`
 - `code-review`
+- `resolving-merge-conflicts`
+- `wizard`
 - `grill-me`
 - `grilling`
 - `handoff`
 - `teach`
-- `writing-great-skills`
+- `to-questionnaire`
+- `wait-what`
+- `writing-for-agents`
 
 OpenClaw-global receives only:
 
 - `grill-me`
 - `handoff`
 
-`teach` and `writing-great-skills` are intentionally not installed globally by default. Use native OpenClaw skills for global OpenClaw skill maintenance and Codex app-server skills for Codex-local skill work.
+`teach` and the retired `writing-great-skills` name are intentionally not installed globally by default. Use native OpenClaw skills for global OpenClaw skill maintenance and Codex app-server skills for Codex-local skill work.
 
-When a release retires or renames a managed skill, live promotion archives the old managed directory before installing the current manifest. For v1.1.0, `to-issues` and `to-prd` are replaced by `to-spec` and `to-tickets`.
+When a release retires or renames a managed skill, live promotion archives the old managed directory before installing the current manifest. For v1.2.3, `writing-great-skills` is replaced by `writing-for-agents`; `resolving-merge-conflicts`, `wizard`, `to-questionnaire`, and `wait-what` are promoted into the manifest.
 
 ## Explicit-Only Skills
 

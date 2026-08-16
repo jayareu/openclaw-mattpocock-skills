@@ -11,7 +11,7 @@
   },
   "installPolicy": {
     "codexAppServer": {
-      "defaultCount": 21,
+      "defaultCount": 25,
       "source": ".claude-plugin/plugin.json"
     },
     "openclawGlobal": {
