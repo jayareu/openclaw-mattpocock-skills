@@ -115,4 +115,3 @@ Check systemd user service state, listeners on ports 18809 then 18789, `/readyz`
 - [ ] **Step 7: Prove stable no-op**
 
 Run ordered dry-run again and dispatch adapter/downstream watchers. Require successful no-op results and no new repository or live changes.
-

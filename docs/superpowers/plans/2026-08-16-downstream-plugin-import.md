@@ -158,4 +158,3 @@ git commit -m "ci: automate Matt Pocock plugin updates"
 - [ ] Merge Soulmate first, then Main.
 - [ ] Dispatch `validate.yml` for each merged `main` and record successful run URLs.
 - [ ] Dispatch each plugin sync workflow again and require successful no-op output.
-
