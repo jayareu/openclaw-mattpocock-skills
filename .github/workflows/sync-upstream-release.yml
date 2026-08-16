@@ -76,8 +76,8 @@ jobs:
 
           ## Verification
 
-          This workflow opens or updates the sync PR before validation so
-          upstream drift stays visible even when validation finds follow-up work.
+          The candidate is validated before this workflow pushes the branch or
+          opens the pull request.
 
           - npm test
           - scripts/validate-mattpocock-skills-openclaw.sh
