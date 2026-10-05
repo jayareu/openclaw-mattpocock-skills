@@ -58,6 +58,15 @@ if (plugin.skills.length !== expectedCount) {
 const names = plugin.skills.map((rel) => path.basename(rel));
 const unique = new Set(names);
 if (unique.size !== names.length) throw new Error("duplicate manifest skill names");
+const promoted = ["engineering", "productivity"].flatMap((bucket) =>
+  fs.readdirSync(`skills/${bucket}`).filter((name) =>
+    fs.existsSync(`skills/${bucket}/${name}/SKILL.md`)
+  ).map((name) => `skills/${bucket}/${name}`)
+).sort();
+const manifestPaths = plugin.skills.map((rel) => rel.replace(/^\.\//, "")).sort();
+if (JSON.stringify(manifestPaths) !== JSON.stringify(promoted)) {
+  throw new Error("manifest must contain exactly the promoted engineering/productivity skills");
+}
 for (const rel of plugin.skills) {
   const skillMd = path.join(rel.replace(/^\.\//, ""), "SKILL.md");
   if (!fs.existsSync(skillMd)) throw new Error(`missing ${skillMd}`);
