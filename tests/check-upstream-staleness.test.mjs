@@ -94,3 +94,21 @@ test("passes when the upstream lock is stale but a sync PR exists", async () => 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("checks both main SHA and stable publication when tracking main", async () => {
+  const root = mkdtempSync(join(tmpdir(), "mattpocock-main-stale-"));
+  try {
+    const lock = join(root, "lock.json");
+    writeFileSync(lock, JSON.stringify({ upstream: { tracking: "main", sha: "a".repeat(40), releaseTag: "v1.3.1" } }));
+    writeFileSync(join(root, "gh"), `#!/usr/bin/env bash
+if [ "$1" = api ]; then echo "$LATEST_SHA";
+elif [ "$4" = mattpocock/skills ]; then echo v1.3.1;
+else echo "$PUBLISHED_TAG"; fi
+`);
+    chmodSync(join(root, "gh"), 0o755);
+    const env = { PATH: `${root}:${process.env.PATH}`, LATEST_SHA: "a".repeat(40), PUBLISHED_TAG: "v1.3.1" };
+    assert.match(run(["--lock-file", lock], { env }), /main and stable release publication are current/);
+    assert.throws(() => run(["--lock-file", lock], { env: { ...env, LATEST_SHA: "b".repeat(40) } }), /upstream main is stale/);
+    assert.throws(() => run(["--lock-file", lock], { env: { ...env, PUBLISHED_TAG: "v1.2.3" } }), /release publication is stale/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

@@ -1,4 +1,4 @@
-name: Sync Upstream Release
+name: Sync Upstream Main
 
 on:
   schedule:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   sync:
-    name: Watch mattpocock/skills releases
+    name: Watch mattpocock/skills main
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -45,11 +45,11 @@ jobs:
       - name: Record original main
         run: echo "SYNC_BASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
-      - name: Sync latest upstream release
+      - name: Sync latest upstream main
         id: sync
         env:
           GH_TOKEN: ${{ github.token }}
-        run: scripts/sync-upstream-release.sh --latest --apply --env-file "$GITHUB_OUTPUT"
+        run: scripts/sync-upstream-release.sh --main --apply --env-file "$GITHUB_OUTPUT"
 
       - name: Validate adapter
         if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
@@ -62,15 +62,17 @@ jobs:
           scripts/security-scan.sh
           git diff --check
           bash -n scripts/promote-upstream-sync.sh
-          scripts/sync-upstream-release.sh --tag "$TAG" --env-file "$RUNNER_TEMP/sync-noop.env"
+          scripts/sync-upstream-release.sh --main --expected-sha "${{ steps.sync.outputs.UPSTREAM_SYNC_SHA }}" --env-file "$RUNNER_TEMP/sync-noop.env"
           grep -qx 'UPSTREAM_SYNC_CHANGED=false' "$RUNNER_TEMP/sync-noop.env"
 
       - name: Push sync branch
         if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
         env:
           TAG: ${{ steps.sync.outputs.UPSTREAM_SYNC_TAG }}
+          SHA: ${{ steps.sync.outputs.UPSTREAM_SYNC_SHA }}
         run: |
           branch="sync-upstream-${TAG}"
+          if [ "$TAG" = main ]; then branch="sync-upstream-main-$SHA"; fi
           git branch -M "$branch"
           git push --force-with-lease origin "HEAD:$branch"
           echo "SYNC_BRANCH=$branch" >> "$GITHUB_ENV"
@@ -87,7 +89,7 @@ jobs:
           body="$(cat <<EOF
           ## Summary
 
-          Sync upstream mattpocock/skills release ${TAG}.
+          Sync upstream mattpocock/skills ${TAG} at ${SHA}.
 
           ## Verification
 
@@ -108,7 +110,7 @@ jobs:
             gh pr create --base main --head "$SYNC_BRANCH" --title "$title" --body "$body"
           fi
 
-      - name: Promote validated upstream release
+      - name: Promote validated upstream main
         if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
         env:
           GH_TOKEN: ${{ github.token }}

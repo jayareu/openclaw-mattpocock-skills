@@ -5,6 +5,7 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/sync-upstream-release.sh --latest [--apply] [--env-file PATH]
+  scripts/sync-upstream-release.sh --main [--expected-sha SHA] [--apply] [--env-file PATH]
   scripts/sync-upstream-release.sh --tag TAG [--apply] [--upstream-repo URL_OR_PATH] [--env-file PATH]
 
 Purpose:
@@ -38,11 +39,22 @@ LOCK_FILE="$REPO/.openclaw/upstream-lock.json"
 UPSTREAM_REPO=""
 TAG=""
 LATEST=0
+MAIN=0
+EXPECTED_SHA=""
 APPLY=0
 ENV_FILE=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --main)
+      MAIN=1
+      shift
+      ;;
+    --expected-sha)
+      [ "$#" -ge 2 ] || die "--expected-sha requires a value"
+      EXPECTED_SHA="$2"
+      shift 2
+      ;;
     --help|-h)
       usage
       exit 0
@@ -82,7 +94,13 @@ if [ "$LATEST" -eq 1 ] && [ -n "$TAG" ]; then
   die "--latest and --tag are mutually exclusive"
 fi
 
-if [ "$LATEST" -eq 0 ] && [ -z "$TAG" ]; then
+if [ "$MAIN" -eq 1 ] && { [ "$LATEST" -eq 1 ] || [ -n "$TAG" ]; }; then
+  die "--main is mutually exclusive with --latest and --tag"
+fi
+if [ "$MAIN" -eq 0 ] && [ -n "$EXPECTED_SHA" ]; then
+  die "--expected-sha requires --main"
+fi
+if [ "$MAIN" -eq 0 ] && [ "$LATEST" -eq 0 ] && [ -z "$TAG" ]; then
   die "pass --latest or --tag TAG"
 fi
 
@@ -111,9 +129,11 @@ if [ "$LATEST" -eq 1 ]; then
   TAG="$(gh release view --repo mattpocock/skills --json tagName --jq .tagName)"
 fi
 
-[ -n "$TAG" ] || die "could not resolve release tag"
+if [ "$MAIN" -eq 1 ]; then TAG=main; fi
+[ -n "$TAG" ] || die "could not resolve source ref"
 case "$TAG" in
   v*) ;;
+  main) [ "$MAIN" -eq 1 ] || die "use --main for branch sync" ;;
   *) die "release tag must start with v: $TAG" ;;
 esac
 
@@ -124,8 +144,13 @@ if [ "$APPLY" -eq 1 ] && [ -n "$(git status --porcelain)" ]; then
 fi
 
 FETCH_REF="refs/upstream-sync/$TAG"
-git fetch --no-tags "$UPSTREAM_REPO" "+refs/tags/$TAG:$FETCH_REF" >/dev/null
+source_ref="refs/tags/$TAG"
+if [ "$MAIN" -eq 1 ]; then source_ref=refs/heads/main; fi
+git fetch --no-tags "$UPSTREAM_REPO" "+$source_ref:$FETCH_REF" >/dev/null
 target_sha="$(git rev-parse "$FETCH_REF^{commit}")"
+if [ -n "$EXPECTED_SHA" ] && [ "$target_sha" != "$EXPECTED_SHA" ]; then
+  die "upstream main moved; retry against its new head"
+fi
 
 write_env() {
   if [ -n "$ENV_FILE" ]; then
@@ -139,7 +164,7 @@ write_env() {
   fi
 }
 
-if [ "$current_tag" = "$TAG" ] && [ "$current_sha" = "$target_sha" ]; then
+if [ "$current_sha" = "$target_sha" ] && { [ "$MAIN" -eq 1 ] || [ "$current_tag" = "$TAG" ]; }; then
   echo "Already synced to $TAG ($target_sha)."
   write_env false
   exit 0
@@ -170,7 +195,12 @@ const fs = require("fs");
 const [path, tag, sha, timestamp] = process.argv.slice(2);
 const lock = JSON.parse(fs.readFileSync(path, "utf8"));
 lock.upstream = lock.upstream || {};
-lock.upstream.releaseTag = tag;
+if (tag === "main") {
+  lock.upstream.tracking = "main";
+} else {
+  lock.upstream.releaseTag = tag;
+  lock.upstream.tracking = "release";
+}
 lock.upstream.sha = sha;
 lock.upstream.auditedAt = timestamp;
 lock.upstream.verifiedAt = timestamp;

@@ -1,37 +1,80 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: "37 8 * * *"
+  workflow_dispatch: {}
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+permissions:
+  contents: write
+
+concurrency:
+  group: adapter-releases
+  cancel-in-progress: false
 
 jobs:
   release:
-    name: Version
+    name: Validate and publish stable adapter release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
+    timeout-minutes: 20
     steps:
-      - name: Checkout
+      - name: Checkout stable release lane
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: adapter-releases
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Create Version Pull Request
-        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
-        with:
-          version: npm run version
-          publish: npx changeset tag
-          commit: "chore: version skills"
-          title: "chore: version skills"
+      - name: Sync stable upstream release
+        id: sync
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          echo "RELEASE_BASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          bash scripts/sync-upstream-release.sh --latest --apply --env-file "$GITHUB_OUTPUT"
+
+      - name: Validate exact release candidate
+        env:
+          TAG: ${{ steps.sync.outputs.UPSTREAM_SYNC_TAG }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ripgrep
+          npm ci
+          npm test
+          bash scripts/validate-mattpocock-skills-openclaw.sh
+          bash scripts/security-scan.sh
+          git diff --check
+          npm run check-plugin-version
+          test "v$(node -p 'require("./package.json").version')" = "$TAG"
+          bash scripts/sync-upstream-release.sh --tag "$TAG" --env-file "$RUNNER_TEMP/release-noop.env"
+          grep -qx 'UPSTREAM_SYNC_CHANGED=false' "$RUNNER_TEMP/release-noop.env"
+
+      - name: Publish validated stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.sync.outputs.UPSTREAM_SYNC_TAG }}
+        run: |
+          candidate="$(git rev-parse HEAD)"
+          git merge-base --is-ancestor "$RELEASE_BASE_SHA" "$candidate"
+          git push --force-with-lease="refs/heads/adapter-releases:$RELEASE_BASE_SHA" origin "HEAD:refs/heads/adapter-releases"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            git fetch origin "refs/tags/$TAG"
+            test "$(git rev-parse 'FETCH_HEAD^{commit}')" = "$candidate"
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest
+            echo "Release $TAG already published at validated commit $candidate."
+          else
+            if git ls-remote --exit-code origin "refs/tags/$TAG" >/dev/null 2>&1; then
+              git fetch origin "refs/tags/$TAG"
+              test "$(git rev-parse 'FETCH_HEAD^{commit}')" = "$candidate"
+            else
+              git tag "$TAG" "$candidate"
+              git push origin "refs/tags/$TAG"
+            fi
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" --notes "Validated OpenClaw adapter for mattpocock/skills $TAG. Unreleased upstream main changes are tracked separately on main." --latest
+          fi

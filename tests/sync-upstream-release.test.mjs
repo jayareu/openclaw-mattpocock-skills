@@ -331,3 +331,22 @@ test("rejects package auto-resolution when another path conflicts", async () => 
     await rm(fixture.root, { recursive: true, force: true });
   }
 });
+
+// Main tracking imports unreleased upstream history without relabeling a release.
+test("tracks upstream main and refuses a moved expected head", async () => {
+  const fixture = await makeFixture();
+  try {
+    git(["branch", "-f", "main", fixture.nextReleaseSha], fixture.upstream);
+    const args = ["--main", "--upstream-repo", fixture.upstream];
+    assert.throws(() => run([...args, "--expected-sha", "0".repeat(40), "--apply"], fixture.downstream), /upstream main moved/);
+    run([...args, "--apply"], fixture.downstream);
+    const lock = JSON.parse(readFileSync(join(fixture.downstream, ".openclaw/upstream-lock.json"), "utf8"));
+    assert.equal(lock.upstream.tracking, "main");
+    assert.equal(lock.upstream.sha, fixture.nextReleaseSha);
+    assert.equal(lock.upstream.releaseTag, "v1.0.0");
+    assert.equal(lock.installPolicy.codexAppServer.defaultCount, 1);
+    assert.match(run([...args, "--expected-sha", fixture.nextReleaseSha], fixture.downstream), /Already synced/);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});

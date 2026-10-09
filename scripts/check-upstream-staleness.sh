@@ -61,6 +61,18 @@ done
 
 [ -f "$LOCK_FILE" ] || die "missing lock file: $LOCK_FILE"
 
+tracking="$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).upstream?.tracking || "release"' "$LOCK_FILE")"
+if [ "$tracking" = main ] && [ -z "$LATEST_TAG" ]; then
+  current_sha="$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).upstream.sha' "$LOCK_FILE")"
+  latest_sha="$(gh api repos/mattpocock/skills/commits/main --jq .sha)"
+  [ "$current_sha" = "$latest_sha" ] || die "upstream main is stale: locked $current_sha, latest $latest_sha"
+  latest_release="$(gh release view --repo mattpocock/skills --json tagName --jq .tagName)"
+  published_release="$(gh release view --repo "$REPO_SLUG" --json tagName --jq .tagName)"
+  [ "$latest_release" = "$published_release" ] || die "adapter release publication is stale: $published_release vs $latest_release"
+  echo "Upstream main and stable release publication are current."
+  exit 0
+fi
+
 current_tag="$(node -e '
 const fs = require("fs");
 const lock = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
