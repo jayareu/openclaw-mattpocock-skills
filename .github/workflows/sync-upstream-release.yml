@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 concurrency:
   group: sync-upstream-release
@@ -17,6 +18,7 @@ jobs:
   sync:
     name: Watch mattpocock/skills releases
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -35,7 +37,13 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ripgrep
+          npm ci
+
+      - name: Record original main
+        run: echo "SYNC_BASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Sync latest upstream release
         id: sync
@@ -45,11 +53,17 @@ jobs:
 
       - name: Validate adapter
         if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
+        env:
+          TAG: ${{ steps.sync.outputs.UPSTREAM_SYNC_TAG }}
         run: |
+          npm ci
           npm test
           scripts/validate-mattpocock-skills-openclaw.sh
           scripts/security-scan.sh
           git diff --check
+          bash -n scripts/promote-upstream-sync.sh
+          scripts/sync-upstream-release.sh --tag "$TAG" --env-file "$RUNNER_TEMP/sync-noop.env"
+          grep -qx 'UPSTREAM_SYNC_CHANGED=false' "$RUNNER_TEMP/sync-noop.env"
 
       - name: Push sync branch
         if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
@@ -60,6 +74,7 @@ jobs:
           git branch -M "$branch"
           git push --force-with-lease origin "HEAD:$branch"
           echo "SYNC_BRANCH=$branch" >> "$GITHUB_ENV"
+          echo "SYNC_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Open or update pull request
         if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
@@ -92,6 +107,19 @@ jobs:
           else
             gh pr create --base main --head "$SYNC_BRANCH" --title "$title" --body "$body"
           fi
+
+      - name: Promote validated upstream release
+        if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pr="$(gh pr view "$SYNC_BRANCH" --json number --jq .number)"
+          bash scripts/promote-upstream-sync.sh "$pr" "$SYNC_HEAD_SHA" "$SYNC_BASE_SHA"
+
+      - name: Validate current main after sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run validate.yml --repo "$GITHUB_REPOSITORY" --ref main
 
       - name: Report no update
         if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'false'

@@ -48,6 +48,11 @@ Codex app-server receives all 25 skills from `.claude-plugin/plugin.json`:
 - `wait-what`
 - `writing-for-agents`
 
+The manifest is the source of truth for this set. Release sync refreshes
+`installPolicy.codexAppServer.defaultCount` from the merged manifest; validation
+still checks that the manifest contains exactly the promoted engineering and
+productivity skills. A count change does not perform or authorize a live install.
+
 OpenClaw-global receives only:
 
 - `grill-me`

@@ -36,17 +36,22 @@ async function makeFixture() {
   git(["init", "-q"], upstream);
   git(["config", "user.name", "Test"], upstream);
   git(["config", "user.email", "test@example.invalid"], upstream);
+  await mkdir(join(upstream, ".claude-plugin"), { recursive: true });
+  const manifestPath = join(upstream, ".claude-plugin", "plugin.json");
+  writeFileSync(manifestPath, JSON.stringify({ skills: ["./skills/engineering/first"] }));
   writeFileSync(join(upstream, "README.md"), "v1\n");
-  git(["add", "README.md"], upstream);
+  git(["add", "README.md", ".claude-plugin/plugin.json"], upstream);
   git(["commit", "-q", "-m", "initial"], upstream);
   git(["tag", "v1.0.0"], upstream);
   writeFileSync(join(upstream, "README.md"), "v2\n");
-  git(["add", "README.md"], upstream);
+  writeFileSync(manifestPath, JSON.stringify({ skills: ["./skills/engineering/first", "./skills/productivity/second"] }));
+  git(["add", "README.md", ".claude-plugin/plugin.json"], upstream);
   git(["commit", "-q", "-m", "release v1.0.1"], upstream);
   git(["tag", "v1.0.1"], upstream);
   const releaseSha = git(["rev-parse", "v1.0.1^{commit}"], upstream);
   writeFileSync(join(upstream, "README.md"), "v3\n");
-  git(["add", "README.md"], upstream);
+  writeFileSync(manifestPath, JSON.stringify({ skills: ["./skills/productivity/second"] }));
+  git(["add", "README.md", ".claude-plugin/plugin.json"], upstream);
   git(["commit", "-q", "-m", "release v1.1.0"], upstream);
   git(["tag", "v1.1.0"], upstream);
   const nextReleaseSha = git(["rev-parse", "v1.1.0^{commit}"], upstream);
@@ -161,6 +166,9 @@ test("syncs a requested release tag and updates the upstream lock", async () => 
     const lock = JSON.parse(readFileSync(join(fixture.downstream, ".openclaw", "upstream-lock.json"), "utf8"));
     assert.equal(lock.upstream.releaseTag, "v1.0.1");
     assert.equal(lock.upstream.sha, fixture.releaseSha);
+    assert.deepEqual(lock.installPolicy.codexAppServer, {
+      defaultCount: 2, source: ".claude-plugin/plugin.json"
+    });
     assert.equal(readFileSync(join(fixture.downstream, "README.md"), "utf8"), "v2\n");
     assert.match(readFileSync(envFile, "utf8"), /UPSTREAM_SYNC_CHANGED=true/);
   } finally {
@@ -190,6 +198,20 @@ test("does not clobber unrelated local tags while fetching a requested release t
   }
 });
 
+test("refreshes the default count when an upstream release retires a skill", async () => {
+  const fixture = await makeFixture();
+  try {
+    run(["--tag", "v1.0.1", "--upstream-repo", fixture.upstream, "--apply"], fixture.downstream);
+    run(["--tag", "v1.1.0", "--upstream-repo", fixture.upstream, "--apply"], fixture.downstream);
+    const lock = JSON.parse(readFileSync(join(fixture.downstream, ".openclaw", "upstream-lock.json"), "utf8"));
+    assert.equal(lock.installPolicy.codexAppServer.defaultCount, 1);
+    assert.equal(lock.installPolicy.codexAppServer.source, ".claude-plugin/plugin.json");
+    assert.equal(lock.upstream.sha, fixture.nextReleaseSha);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("reports no change when the lock already matches the requested release tag", async () => {
   const fixture = await makeFixture();
   try {
@@ -210,6 +232,27 @@ test("reports no change when the lock already matches the requested release tag"
 
     assert.equal(git(["rev-parse", "HEAD"], fixture.downstream), head);
     assert.match(readFileSync(envFile, "utf8"), /UPSTREAM_SYNC_CHANGED=false/);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("does not advance the lock or emit sync outputs for an invalid manifest", async () => {
+  const fixture = await makeFixture();
+  try {
+    writeFileSync(join(fixture.upstream, ".claude-plugin", "plugin.json"), JSON.stringify({ skills: [] }));
+    git(["add", ".claude-plugin/plugin.json"], fixture.upstream);
+    git(["commit", "-q", "-m", "invalid manifest"], fixture.upstream);
+    git(["tag", "-f", "v1.1.0"], fixture.upstream);
+    const lockPath = join(fixture.downstream, ".openclaw", "upstream-lock.json");
+    const before = readFileSync(lockPath, "utf8");
+    const envFile = join(fixture.root, "result.env");
+    assert.throws(() => run([
+      "--tag", "v1.1.0", "--upstream-repo", fixture.upstream,
+      "--apply", "--env-file", envFile
+    ], fixture.downstream), /plugin.skills must be a non-empty array/);
+    assert.equal(readFileSync(lockPath, "utf8"), before);
+    assert.throws(() => readFileSync(envFile), { code: "ENOENT" });
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
   }

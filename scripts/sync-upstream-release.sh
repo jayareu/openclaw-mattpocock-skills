@@ -175,6 +175,16 @@ lock.upstream.sha = sha;
 lock.upstream.auditedAt = timestamp;
 lock.upstream.verifiedAt = timestamp;
 lock.upstream.syncedAt = timestamp;
+// The manifest is the default skill source; releases can add or retire skills.
+const policy = lock.installPolicy?.codexAppServer;
+if (policy) {
+  const manifestPath = require("path").join(require("path").dirname(path), "..", ".claude-plugin", "plugin.json");
+  const plugin = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  if (!Array.isArray(plugin.skills) || plugin.skills.length === 0) {
+    throw new Error("plugin.skills must be a non-empty array");
+  }
+  policy.defaultCount = plugin.skills.length;
+}
 fs.writeFileSync(path, JSON.stringify(lock, null, 2) + "\n");
 NODE
 
