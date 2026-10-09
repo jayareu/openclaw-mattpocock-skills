@@ -1,34 +1,37 @@
 # Automatic upstream updates
 
-The daily `Sync Upstream Release` workflow tracks the latest published stable
-`mattpocock/skills` release, retaining release history and adapter behavior.
-It also supports manual dispatch. It does not mirror unreleased upstream main.
+`Sync Upstream Main` runs daily and imports the latest upstream main commit,
+including changes that have not received a release tag. Manual dispatch is also
+available. The adapter lock records `tracking: main` and the exact upstream SHA;
+`releaseTag` remains the last stable tag imported into this checkout, not a claim
+that the current main content is a stable release.
 
-After sync, it refreshes the manifest count in the adapter lock, validates the
-exact promoted skill set and install policy, runs regression tests and the
-security review scan, and proves a second sync is a no-op. The workflow installs
-ripgrep explicitly so the security scan does not depend on runner image contents.
+Each candidate installs dependencies from its own lock, runs regression tests,
+validates the exact promoted skill set and installation policy, performs the
+informational security scan, and proves a repeat sync against the same SHA is a
+no-op. Unexpected conflicts stop promotion. The candidate is recorded in a
+`sync-upstream-main` PR and promoted using an atomic lease on the original main
+SHA, with ancestry and exact-head checks. No history rewrite is permitted.
+Successful syncs, including no-ops, explicitly dispatch validation on main.
 
-The validated candidate is pushed to `sync-upstream-<tag>` and recorded in a PR.
-The workflow automatically promotes that PR's validated head SHA with a
-fast-forward push and an explicit lease on the original main SHA. The lease
-atomically rejects concurrent changes to main; an ancestry check forbids history
-rewrites. GitHub recognizes the included PR as merged. Foreign, changed, draft,
-closed, or unexpected PRs are refused. Repository push protections remain effective.
-Unexpected conflicts or validation failures stop before publication or merge.
-The security scan reports patterns for review; it is not an automated safety verdict.
+`Release` runs daily and on manual dispatch using the separate `adapter-releases`
+branch. That branch starts from the validated v1.3.1 adapter, imports only stable
+upstream release tags, runs the full validation suite and package/manifest version
+checks, and publishes the corresponding GitHub tag and release. Existing tags
+must resolve to the exact validated candidate; mismatches stop publication.
+The branch update uses an atomic base lease. Interrupted tag/release publication
+is recovered by rerunning the workflow. Unreleased main changes never enter a
+stable adapter release. Fixes needed specifically by the release lane must be
+applied to that branch explicitly rather than importing upstream main.
 
-Only repository-scoped `GITHUB_TOKEN` is used. The watcher has contents,
-pull-request, and Actions write permission; Actions write permits explicitly
-dispatching `Validate adapter` after the bot merge. A bot merge does not trigger
-push workflows. No PAT, shared credential, branch-protection bypass, live install,
-downstream update, or release publication is added by this flow.
+The staleness checker verifies both upstream-main SHA equality and latest stable
+release publication. Repository-scoped GITHUB_TOKEN is used without a PAT or
+shared credentials. Main sync has contents, PR, and Actions write permissions;
+release publication only needs contents write. GitHub push protections remain
+active, and no admin bypass is used. These workflows do not install live skills
+or write downstream repositories. Existing external consumers of stable releases
+retain their own configured behavior.
 
-Every successful sync, including a no-op, dispatches main validation. If promotion
-succeeds but dispatch fails, rerun the watcher to retry, or manually dispatch
-`Validate adapter` on main. If main moves or a candidate becomes stale, rerun
-the sync watcher; it regenerates and revalidates the candidate from current main.
-
-This user-approved automatic merge replaces the older manual merge gate in the
-upstream release watch PRD for adapter release sync PRs only. Other PRs and live
-deployment approval boundaries retain their existing policy.
+This October 9, 2026 user-approved policy supersedes the older release-only sync
+and manual merge rules for the adapter. Other PRs and live deployment boundaries
+retain their existing policy.

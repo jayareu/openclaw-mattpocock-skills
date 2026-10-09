@@ -25,7 +25,7 @@ process.stdin.on("end", () => {
   const [repo, sha] = process.argv.slice(1);
   if (pr.state !== "open" || pr.draft || pr.head.sha !== sha ||
       pr.head.repo.full_name !== repo || pr.base.repo.full_name !== repo ||
-      pr.base.ref !== "main" || !/^sync-upstream-v/.test(pr.head.ref)) {
+      pr.base.ref !== "main" || !/^sync-upstream-(v|main$)/.test(pr.head.ref)) {
     throw new Error("refusing to merge an unexpected or changed sync candidate");
   }
 });
