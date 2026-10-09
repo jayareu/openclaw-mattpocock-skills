@@ -6,6 +6,12 @@ J.R. wants `mattpocock-skills` to stay current with `mattpocock/skills` release 
 
 ## Solution
 
+Updated October 9, 2026: validated adapter release sync PRs now merge
+automatically under the user's authorization. See
+[automatic upstream updates](../automatic-upstream-updates.md) for exact-SHA
+checks, failure handling, and the retained live-install boundary. This supersedes
+the manual merge gate and automatic-merge exclusion below for these PRs only.
+
 Add a release-tag watcher to the OpenClaw adaptation repo. It checks the latest upstream GitHub release, syncs the release tag into the adaptation branch, updates the upstream lock, runs validation, and opens or updates a pull request. Merge remains the approval gate; live deployment remains handled by the existing `sage-openclaw` and `sage-soulmate-openclaw` repo automation after those repos bundle the new plugin version.
 
 ## User Stories
