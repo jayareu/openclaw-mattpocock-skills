@@ -66,6 +66,7 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             git fetch origin "refs/tags/$TAG"
             test "$(git rev-parse 'FETCH_HEAD^{commit}')" = "$candidate"
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest
             echo "Release $TAG already published at validated commit $candidate."
           else
             if git ls-remote --exit-code origin "refs/tags/$TAG" >/dev/null 2>&1; then
