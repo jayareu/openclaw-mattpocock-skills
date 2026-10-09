@@ -69,8 +69,10 @@ jobs:
         if: steps.sync.outputs.UPSTREAM_SYNC_CHANGED == 'true'
         env:
           TAG: ${{ steps.sync.outputs.UPSTREAM_SYNC_TAG }}
+          SHA: ${{ steps.sync.outputs.UPSTREAM_SYNC_SHA }}
         run: |
           branch="sync-upstream-${TAG}"
+          if [ "$TAG" = main ]; then branch="sync-upstream-main-$SHA"; fi
           git branch -M "$branch"
           git push --force-with-lease origin "HEAD:$branch"
           echo "SYNC_BRANCH=$branch" >> "$GITHUB_ENV"

@@ -10,7 +10,7 @@ Each candidate installs dependencies from its own lock, runs regression tests,
 validates the exact promoted skill set and installation policy, performs the
 informational security scan, and proves a repeat sync against the same SHA is a
 no-op. Unexpected conflicts stop promotion. The candidate is recorded in a
-`sync-upstream-main` PR and promoted using an atomic lease on the original main
+`sync-upstream-main-<SHA>` PR and promoted using an atomic lease on the original main
 SHA, with ancestry and exact-head checks. No history rewrite is permitted.
 Successful syncs, including no-ops, explicitly dispatch validation on main.
 

@@ -49,3 +49,14 @@ test("pins every referenced GitHub Action to an immutable commit", () => {
     }
   }
 });
+
+test("keeps stable publication isolated from unreleased main", () => {
+  const release = workflow("release.yml");
+  assert.match(release, /ref: adapter-releases/);
+  assert.match(release, /--latest --apply/);
+  assert.match(release, /gh release create/);
+  assert.match(release, /--verify-tag/);
+  assert.ok(release.indexOf("name: Validate exact release candidate") < release.indexOf("name: Publish validated stable release"));
+  assert.match(workflow("sync-upstream-release.yml"), /--main --apply/);
+  assert.match(workflow("sync-upstream-release.yml"), /--expected-sha/);
+});
