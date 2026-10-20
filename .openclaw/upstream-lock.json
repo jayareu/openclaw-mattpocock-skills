@@ -4,10 +4,10 @@
     "cloneUrl": "https://github.com/mattpocock/skills.git",
     "branch": "main",
     "releaseTag": "v1.3.1",
-    "sha": "49dd158d1076134a641b33efb035946536778336",
-    "auditedAt": "2026-10-09T17:06:22Z",
-    "verifiedAt": "2026-10-09T17:06:22Z",
-    "syncedAt": "2026-10-09T17:06:22Z",
+    "sha": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+    "auditedAt": "2026-10-20T08:36:32Z",
+    "verifiedAt": "2026-10-20T08:36:32Z",
+    "syncedAt": "2026-10-20T08:36:32Z",
     "tracking": "main"
   },
   "installPolicy": {
